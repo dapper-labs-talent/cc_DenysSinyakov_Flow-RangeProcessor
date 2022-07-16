@@ -3,9 +3,13 @@ package org.onflow.engine;
 import java.util.Map;
 
 public class RangeResponseProcessor {
+  private final long activeRangeSize;
+  private final int minRangeResponse;
   private final Map<Long, Integer> heightToProcessedBlocks;
 
-  public RangeResponseProcessor(Map<Long, Integer> heightToProcessedBlocks) {
+  public RangeResponseProcessor(long activeRangeSize, int minRangeResponse, Map<Long, Integer> heightToProcessedBlocks) {
+    this.activeRangeSize = activeRangeSize;
+    this.minRangeResponse = minRangeResponse;
     this.heightToProcessedBlocks = heightToProcessedBlocks;
   }
 

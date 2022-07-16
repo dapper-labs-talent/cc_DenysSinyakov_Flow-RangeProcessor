@@ -13,7 +13,9 @@ class RangeResponseProcessorTest {
 
   @Test
   void rangeProcessorCanBeCreated() {
-    RangeResponseProcessor r = new RangeResponseProcessor(new HashMap<>());
+    long activeRangeSize = 100L;
+    int minRangeResponse = 10;
+    RangeResponseProcessor r = new RangeResponseProcessor(activeRangeSize, minRangeResponse, new HashMap<>());
     assertNotNull(r);
   }
 
@@ -26,9 +28,9 @@ class RangeResponseProcessorTest {
     };
     long startHeight = 0;
     Map<Long, Integer> heightToProcessedBlocks = new HashMap<>();
-    RangeResponseProcessor processor = new RangeResponseProcessor(heightToProcessedBlocks);
+    RangeResponseProcessor processor = new RangeResponseProcessor(100L, 10, heightToProcessedBlocks);
     processor.processRange(startHeight, blocks);
-    Map<Long, Integer> expectedResult = new HashMap<>(){{
+    Map<Long, Integer> expectedResult = new HashMap<>() {{
       put(0L, 1);
       put(1L, 1);
       put(2L, 1);
@@ -44,11 +46,11 @@ class RangeResponseProcessorTest {
         new Block("third")
     };
     Map<Long, Integer> heightToProcessedBlocks = new HashMap<>();
-    RangeResponseProcessor processor = new RangeResponseProcessor(heightToProcessedBlocks);
+    RangeResponseProcessor processor = new RangeResponseProcessor(100L, 10, heightToProcessedBlocks);
     processor.processRange(0, blocks);
     processor.processRange(1, blocks);
     processor.processRange(1, blocks);
-    Map<Long, Integer> expectedResult = new HashMap<>(){{
+    Map<Long, Integer> expectedResult = new HashMap<>() {{
       put(0L, 1);
       put(1L, 3);
       put(2L, 3);
