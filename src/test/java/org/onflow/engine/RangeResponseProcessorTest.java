@@ -59,4 +59,23 @@ class RangeResponseProcessorTest {
     assertEquals(expectedResult, heightToProcessedBlocks);
   }
 
+  @Test
+  void activeRangeIsReturnedWithMinHeightThatHasLesThanMinResponses() {
+    int minRangeResponse = 10;
+    long activeRangeSize = 5L;
+    Map<Long, Integer> heightToProcessedBlocks = new HashMap<>(){{
+      put(0L, 10);
+      put(1L, 10);
+      put(2L, 7); // min height that is < than
+      put(5L, 8);
+      put(6L, 10);
+      put(7L, 10);
+      put(10L, 10);
+    }};
+    RangeResponseProcessor processor = new RangeResponseProcessor(5L, minRangeResponse, heightToProcessedBlocks);
+    ActiveRange activeRangeActual = processor.getActiveRange();
+    ActiveRange expected = new ActiveRange(2L, 2L + activeRangeSize - 1);
+    assertEquals(expected, activeRangeActual);
+  }
+
 }
