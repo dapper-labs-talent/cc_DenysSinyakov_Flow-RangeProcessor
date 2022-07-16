@@ -1,5 +1,7 @@
 package org.onflow.engine;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -23,12 +25,17 @@ public class RangeResponseProcessor {
   }
 
   public ActiveRange getActiveRange() {
-    long minHeight = heightToProcessedBlocks.entrySet()
+    List<Map.Entry<Long, Integer>> unfulfilledHeights = heightToProcessedBlocks.entrySet()
         .stream()
         .filter((entry) -> entry.getValue() < this.minRangeResponse)
-        .collect(Collectors.toList())
-        .get(0)
-        .getKey();
+        .sorted(Comparator.comparingLong(Map.Entry::getKey))
+        .collect(Collectors.toList());
+
+    if (unfulfilledHeights.isEmpty()) {
+      return new ActiveRange(0L, activeRangeSize - 1);
+    }
+    long minHeight = unfulfilledHeights.get(0).getKey();
+
     return new ActiveRange(minHeight, minHeight + activeRangeSize - 1);
   }
 }

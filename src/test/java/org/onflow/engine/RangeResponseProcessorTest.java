@@ -60,6 +60,19 @@ class RangeResponseProcessorTest {
   }
 
   @Test
+  void blocksNotWithinActiveRangeAreIgnored() {
+
+  }
+
+  @Test
+  void initialActiveRangeIsZeroToActiveRangeSizeMinusOne() {
+    long activeRangeSize = 5L;
+    RangeResponseProcessor processor = new RangeResponseProcessor(5L, 10, new HashMap<>());
+    ActiveRange expected = new ActiveRange(0L, activeRangeSize - 1);
+    assertEquals(expected, processor.getActiveRange());
+  }
+
+  @Test
   void activeRangeIsReturnedWithMinHeightThatHasLesThanMinResponses() {
     int minRangeResponse = 10;
     long activeRangeSize = 5L;
@@ -72,10 +85,9 @@ class RangeResponseProcessorTest {
       put(7L, 10);
       put(10L, 10);
     }};
-    RangeResponseProcessor processor = new RangeResponseProcessor(5L, minRangeResponse, heightToProcessedBlocks);
-    ActiveRange activeRangeActual = processor.getActiveRange();
+    RangeResponseProcessor processor = new RangeResponseProcessor(activeRangeSize, minRangeResponse, heightToProcessedBlocks);
     ActiveRange expected = new ActiveRange(2L, 2L + activeRangeSize - 1);
-    assertEquals(expected, activeRangeActual);
+    assertEquals(expected, processor.getActiveRange());
   }
 
 }
