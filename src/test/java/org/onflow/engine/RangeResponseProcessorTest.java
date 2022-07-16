@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -15,7 +17,7 @@ class RangeResponseProcessorTest {
   void rangeProcessorCanBeCreated() {
     long activeRangeSize = 100L;
     int minRangeResponse = 10;
-    RangeResponseProcessor r = new RangeResponseProcessor(activeRangeSize, minRangeResponse, new HashMap<>());
+    RangeResponseProcessor r = new RangeResponseProcessor(activeRangeSize, minRangeResponse, new ConcurrentHashMap<>());
     assertNotNull(r);
   }
 
@@ -27,7 +29,7 @@ class RangeResponseProcessorTest {
         new Block("third")
     };
     long startHeight = 0;
-    Map<Long, Integer> heightToProcessedBlocks = new HashMap<>();
+    ConcurrentMap<Long, Integer> heightToProcessedBlocks = new ConcurrentHashMap<>();
     RangeResponseProcessor processor = new RangeResponseProcessor(100L, 10, heightToProcessedBlocks);
     processor.processRange(startHeight, blocks);
     Map<Long, Integer> expectedResult = new HashMap<>() {{
@@ -45,7 +47,7 @@ class RangeResponseProcessorTest {
         new Block("second"),
         new Block("third")
     };
-    Map<Long, Integer> heightToProcessedBlocks = new HashMap<>();
+    ConcurrentMap<Long, Integer> heightToProcessedBlocks = new ConcurrentHashMap<>();
     RangeResponseProcessor processor = new RangeResponseProcessor(100L, 10, heightToProcessedBlocks);
     processor.processRange(0, blocks);
     processor.processRange(1, blocks);
@@ -62,7 +64,7 @@ class RangeResponseProcessorTest {
   @Test
   void blocksNotWithinActiveRangeAreIgnored() {
     long activeRangeSize = 3L;
-    Map<Long, Integer> heightToProcessedBlocks = new HashMap<>();
+    ConcurrentMap<Long, Integer> heightToProcessedBlocks = new ConcurrentHashMap<>();
     RangeResponseProcessor processor = new RangeResponseProcessor(activeRangeSize, 10, heightToProcessedBlocks);
     Block[] blocks = new Block[]{
         new Block("first"),
@@ -85,7 +87,7 @@ class RangeResponseProcessorTest {
   @Test
   void initialActiveRangeIsZeroToActiveRangeSizeMinusOne() {
     long activeRangeSize = 5L;
-    RangeResponseProcessor processor = new RangeResponseProcessor(activeRangeSize, 10, new HashMap<>());
+    RangeResponseProcessor processor = new RangeResponseProcessor(activeRangeSize, 10, new ConcurrentHashMap<>());
     ActiveRange expected = new ActiveRange(0L, activeRangeSize - 1);
     assertEquals(expected, processor.getActiveRange());
   }
@@ -94,7 +96,7 @@ class RangeResponseProcessorTest {
   void activeRangeIsReturnedWithMinHeightThatHasLesThanMinResponses() {
     int minRangeResponse = 10;
     long activeRangeSize = 5L;
-    Map<Long, Integer> heightToProcessedBlocks = new HashMap<>(){{
+    ConcurrentMap<Long, Integer> heightToProcessedBlocks = new ConcurrentHashMap<>(){{
       put(0L, 10);
       put(1L, 10);
       put(2L, 7); // min height that is < than
