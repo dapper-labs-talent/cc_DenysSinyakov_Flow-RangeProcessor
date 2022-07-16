@@ -61,13 +61,31 @@ class RangeResponseProcessorTest {
 
   @Test
   void blocksNotWithinActiveRangeAreIgnored() {
+    long activeRangeSize = 3L;
+    Map<Long, Integer> heightToProcessedBlocks = new HashMap<>();
+    RangeResponseProcessor processor = new RangeResponseProcessor(activeRangeSize, 10, heightToProcessedBlocks);
+    Block[] blocks = new Block[]{
+        new Block("first"),
+        new Block("second"),
+        new Block("third"),
+        new Block("fourth"),  // has to be ignored with active range size 3
+        new Block("fifth"),   // has to be ignored with active range size 3
+    };
+
+    processor.processRange(0L, blocks);
+    Map<Long, Integer> expectedResult = new HashMap<>() {{
+      put(0L, 1);
+      put(1L, 1);
+      put(2L, 1);
+    }};
+    assertEquals(expectedResult, heightToProcessedBlocks);
 
   }
 
   @Test
   void initialActiveRangeIsZeroToActiveRangeSizeMinusOne() {
     long activeRangeSize = 5L;
-    RangeResponseProcessor processor = new RangeResponseProcessor(5L, 10, new HashMap<>());
+    RangeResponseProcessor processor = new RangeResponseProcessor(activeRangeSize, 10, new HashMap<>());
     ActiveRange expected = new ActiveRange(0L, activeRangeSize - 1);
     assertEquals(expected, processor.getActiveRange());
   }
