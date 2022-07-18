@@ -18,12 +18,10 @@ public class RangeResponseProcessor {
   }
 
   public void processRange(long startHeight, Block[] blocks) {
-    long i = startHeight;
     ActiveRange activeRange = getActiveRange();
-    for (Block block : blocks) {
+    for (long i = startHeight; i < blocks.length + startHeight; i++) {
       heightToProcessedBlocks.merge(i, 1, Integer::sum);
-      i++;
-      if (i > activeRange.getMaxHeight()) {
+      if (i + 1 > activeRange.getMaxHeight()) {
         break;
       }
     }
