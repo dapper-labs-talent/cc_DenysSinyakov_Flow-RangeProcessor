@@ -2,6 +2,7 @@ package org.onflow.engine;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -97,7 +98,7 @@ class RangeResponseProcessorTest {
     int minRangeResponse = 10;
     long activeRangeSize = 5L;
     ConcurrentMap<Long, Integer> heightToProcessedBlocks = new ConcurrentHashMap<>(){{
-      put(0L, 10);
+      put(0L, 9); // gets updated and fulfilled
       put(1L, 10);
       put(2L, 7); // min height that is < than
       put(5L, 8);
@@ -105,7 +106,9 @@ class RangeResponseProcessorTest {
       put(7L, 10);
       put(10L, 10);
     }};
+
     RangeResponseProcessor processor = new RangeResponseProcessor(activeRangeSize, minRangeResponse, heightToProcessedBlocks);
+    processor.processRange(0, new Block[]{new Block("first")});
     ActiveRange expected = new ActiveRange(2L, 2L + activeRangeSize - 1);
     assertEquals(expected, processor.getActiveRange());
   }

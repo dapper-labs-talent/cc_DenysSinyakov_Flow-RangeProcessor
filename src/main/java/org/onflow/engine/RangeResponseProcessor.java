@@ -1,44 +1,63 @@
 package org.onflow.engine;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class RangeResponseProcessor {
   private final long activeRangeSize;
   private final int minRangeResponse;
+  private final AtomicLong minUnfulfilledHeight;
   private final ConcurrentMap<Long, Integer> heightToProcessedBlocks;
 
-  public RangeResponseProcessor(long activeRangeSize, int minRangeResponse, ConcurrentMap<Long, Integer> heightToProcessedBlocks) {
+  public RangeResponseProcessor(long activeRangeSize, int minRangeResponse) {
+    this.activeRangeSize = activeRangeSize;
+    this.minRangeResponse = minRangeResponse;
+    this.heightToProcessedBlocks = new ConcurrentHashMap<>();
+    minUnfulfilledHeight = new AtomicLong(0);
+  }
+
+  RangeResponseProcessor(long activeRangeSize, int minRangeResponse, ConcurrentMap<Long, Integer> heightToProcessedBlocks) {
     this.activeRangeSize = activeRangeSize;
     this.minRangeResponse = minRangeResponse;
     this.heightToProcessedBlocks = heightToProcessedBlocks;
+    minUnfulfilledHeight = new AtomicLong(0);
   }
 
   public void processRange(long startHeight, Block[] blocks) {
-    ActiveRange activeRange = getActiveRange();
     for (long i = startHeight; i < blocks.length + startHeight; i++) {
       heightToProcessedBlocks.merge(i, 1, Integer::sum);
-      if (i + 1 > activeRange.getMaxHeight()) {
+      if (isActiveRangeUpdateRequired(i)) {
+        updateActiveRange();
+      }
+      if (i + 1 > getActiveRange().getMaxHeight()) {
         break;
       }
     }
   }
 
   public ActiveRange getActiveRange() {
-    List<Map.Entry<Long, Integer>> unfulfilledHeights = heightToProcessedBlocks.entrySet()
-        .stream()
-        .filter((entry) -> entry.getValue() < this.minRangeResponse)
-        .sorted(Comparator.comparingLong(Map.Entry::getKey))
-        .collect(Collectors.toList());
+    long h = minUnfulfilledHeight.get();
+    return new ActiveRange(h, h + activeRangeSize - 1);
+  }
 
-    if (unfulfilledHeights.isEmpty()) {
-      return new ActiveRange(0L, activeRangeSize - 1);
+  private boolean isActiveRangeUpdateRequired(long blockHeight) {
+    return allResponseReceived(blockHeight) && heightToProcessedBlocks.get(blockHeight) == minRangeResponse;
+  }
+
+  private boolean allResponseReceived(long blockHeight) {
+    Integer responsesNumber = heightToProcessedBlocks.get(blockHeight);
+    if (responsesNumber == null) {
+      return false;
     }
-    long minHeight = unfulfilledHeights.get(0).getKey();
+    return responsesNumber == minRangeResponse;
+  }
 
-    return new ActiveRange(minHeight, minHeight + activeRangeSize - 1);
+  private void updateActiveRange() {
+    long i = minUnfulfilledHeight.incrementAndGet();
+    while (heightToProcessedBlocks.get(i) >= minRangeResponse && i < heightToProcessedBlocks.size()) {
+      minUnfulfilledHeight.getAndIncrement();
+      i++;
+    }
   }
 }

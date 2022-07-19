@@ -31,4 +31,12 @@ public class ActiveRange {
   public int hashCode() {
     return Objects.hash(minHeight, maxHeight);
   }
+
+  @Override
+  public String toString() {
+    return "ActiveRange{" +
+        "minHeight=" + minHeight +
+        ", maxHeight=" + maxHeight +
+        '}';
+  }
 }
