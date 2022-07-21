@@ -20,24 +20,23 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class RangeResponseProcessorTest {
 
+  private static final long ACTIVE_RANGE_SIZE = 100L;
+  private static final int MIN_RANGE_RESPONSE = 10;
+
   @Test
   void rangeProcessorCanBeCreated() {
-    long activeRangeSize = 100L;
-    int minRangeResponse = 10;
-    RangeResponseProcessor r = new RangeResponseProcessor(activeRangeSize, minRangeResponse, new ConcurrentHashMap<>());
-    assertNotNull(r);
+    RangeResponseProcessor responseProcessor =
+        new RangeResponseProcessor(ACTIVE_RANGE_SIZE, MIN_RANGE_RESPONSE, new ConcurrentHashMap<>());
+    assertNotNull(responseProcessor);
   }
 
   @Test
   void processRangeCanProcessSingleBlock() {
-    Block[] blocks = new Block[]{
-        new Block("first"),
-        new Block("second"),
-        new Block("third")
-    };
+    Block[] blocks = generateBlockArrayOfSize(3);
     long startHeight = 0;
     ConcurrentMap<Long, Integer> heightToProcessedBlocks = new ConcurrentHashMap<>();
-    RangeResponseProcessor processor = new RangeResponseProcessor(100L, 10, heightToProcessedBlocks);
+    RangeResponseProcessor processor =
+        new RangeResponseProcessor(ACTIVE_RANGE_SIZE, MIN_RANGE_RESPONSE, heightToProcessedBlocks);
     processor.processRange(startHeight, blocks);
     Map<Long, Integer> expectedResult = new HashMap<>() {{
       put(0L, 1);
@@ -49,13 +48,10 @@ class RangeResponseProcessorTest {
 
   @Test
   void processRangeCanProcessConsecutiveRangeOfBlocks() {
-    Block[] blocks = new Block[]{
-        new Block("first"),
-        new Block("second"),
-        new Block("third")
-    };
+    Block[] blocks = generateBlockArrayOfSize(3);
     ConcurrentMap<Long, Integer> heightToProcessedBlocks = new ConcurrentHashMap<>();
-    RangeResponseProcessor processor = new RangeResponseProcessor(100L, 10, heightToProcessedBlocks);
+    RangeResponseProcessor processor =
+        new RangeResponseProcessor(ACTIVE_RANGE_SIZE, MIN_RANGE_RESPONSE, heightToProcessedBlocks);
     processor.processRange(0, blocks);
     processor.processRange(1, blocks);
     processor.processRange(1, blocks);
@@ -70,16 +66,11 @@ class RangeResponseProcessorTest {
 
   @Test
   void blocksNotWithinActiveRangeAreIgnored() {
-    long activeRangeSize = 3L;
     ConcurrentMap<Long, Integer> heightToProcessedBlocks = new ConcurrentHashMap<>();
-    RangeResponseProcessor processor = new RangeResponseProcessor(activeRangeSize, 10, heightToProcessedBlocks);
-    Block[] blocks = new Block[]{
-        new Block("first"),
-        new Block("second"),
-        new Block("third"),
-        new Block("fourth"),  // has to be ignored with active range size 3
-        new Block("fifth"),   // has to be ignored with active range size 3
-    };
+    long activeRangeSize = 3L;
+    RangeResponseProcessor processor =
+        new RangeResponseProcessor(activeRangeSize, MIN_RANGE_RESPONSE, heightToProcessedBlocks);
+    Block[] blocks = generateBlockArrayOfSize(5); // blocks of index 3 and 4 to be ignored with active range size 3
 
     processor.processRange(0L, blocks);
     Map<Long, Integer> expectedResult = new HashMap<>() {{
@@ -88,32 +79,31 @@ class RangeResponseProcessorTest {
       put(2L, 1);
     }};
     assertEquals(expectedResult, heightToProcessedBlocks);
-
   }
 
   @Test
   void initialActiveRangeIsZeroToActiveRangeSizeMinusOne() {
-    long activeRangeSize = 5L;
-    RangeResponseProcessor processor = new RangeResponseProcessor(activeRangeSize, 10, new ConcurrentHashMap<>());
-    ActiveRange expected = new ActiveRange(0L, activeRangeSize - 1);
+    RangeResponseProcessor processor =
+        new RangeResponseProcessor(ACTIVE_RANGE_SIZE, MIN_RANGE_RESPONSE, new ConcurrentHashMap<>());
+    ActiveRange expected = new ActiveRange(0L, ACTIVE_RANGE_SIZE - 1);
     assertEquals(expected, processor.getActiveRange());
   }
 
   @Test
   void activeRangeIsReturnedWithMinHeightThatHasLesThanMinResponses() {
-    int minRangeResponse = 10;
     long activeRangeSize = 5L;
     ConcurrentMap<Long, Integer> heightToProcessedBlocks = new ConcurrentHashMap<>() {{
       put(0L, 9); // gets updated and fulfilled
       put(1L, 10);
-      put(2L, 7); // min height that is < than
+      put(2L, 7); // min height that is < than min responses for range
       put(5L, 8);
       put(6L, 10);
       put(7L, 10);
       put(10L, 10);
     }};
 
-    RangeResponseProcessor processor = new RangeResponseProcessor(activeRangeSize, minRangeResponse, heightToProcessedBlocks);
+    RangeResponseProcessor processor =
+        new RangeResponseProcessor(activeRangeSize, MIN_RANGE_RESPONSE, heightToProcessedBlocks);
     processor.processRange(0, new Block[]{new Block("first")});
     ActiveRange expected = new ActiveRange(2L, 2L + activeRangeSize - 1);
     assertEquals(expected, processor.getActiveRange());
@@ -121,15 +111,15 @@ class RangeResponseProcessorTest {
 
   @Test
   void processRangeCanProcessBlocksInThreadSafeManner() throws ExecutionException, InterruptedException {
-    Block[] blocks = new Block[]{
-        new Block("first"),
-    };
+    Block[] blocks = generateBlockArrayOfSize(1);
     int threads = 1000;
     ExecutorService service = Executors.newFixedThreadPool(threads);
     CountDownLatch latch = new CountDownLatch(1);
     Collection<Future<?>> futures = new ArrayList<>(threads);
     Map<Long, Integer> heightToProcessedBlocks = new HashMap<>();
-    RangeResponseProcessor processor = new RangeResponseProcessor(1L, 20, heightToProcessedBlocks, new UpdateListener(0, 20));
+    RangeResponseProcessor processor =
+        new RangeResponseProcessor(1L, 20, heightToProcessedBlocks,
+            new UpdateListener(0, 20));
 
     for (int i = 0; i < threads; i++) {
       futures.add(
@@ -145,9 +135,16 @@ class RangeResponseProcessorTest {
     }
     latch.countDown();
     for (Future<?> f : futures) {
-        f.get();
+      f.get();
     }
     assertEquals(heightToProcessedBlocks.get(0L), threads);
   }
 
+  private Block[] generateBlockArrayOfSize(int size) {
+    Block[] blocks = new Block[size];
+    for (int i = 0; i < size; i++) {
+      blocks[i] = new Block(String.valueOf(i));
+    }
+    return blocks;
+  }
 }
