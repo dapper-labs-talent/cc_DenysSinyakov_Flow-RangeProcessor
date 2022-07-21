@@ -17,6 +17,7 @@ public class RangeResponseProcessor {
     this.heightToProcessedBlocks = new ConcurrentHashMap<>();
     minUnfulfilledHeight = new AtomicLong(0);
   }
+
   RangeResponseProcessor(long activeRangeSize,
                          int minRangeResponse,
                          Map<Long, Integer> heightToProcessedBlocks) {
@@ -25,6 +26,7 @@ public class RangeResponseProcessor {
     this.heightToProcessedBlocks = heightToProcessedBlocks;
     this.minUnfulfilledHeight = new AtomicLong(0);
   }
+
   RangeResponseProcessor(long activeRangeSize,
                          int minRangeResponse,
                          Map<Long, Integer> heightToProcessedBlocks,
@@ -37,13 +39,19 @@ public class RangeResponseProcessor {
   }
 
   public synchronized void processRange(long startHeight, Block[] blocks) {
-    for (long i = startHeight; i < blocks.length + startHeight; i++) {
-      heightToProcessedBlocks.merge(i, 1, Integer::sum);
-      if (isActiveRangeUpdateRequired(i)) {
-        updateActiveRange();
+    if (blocks != null) {
+      boolean activeRangeUpdateRequired = false;
+      for (long i = startHeight; i < blocks.length + startHeight; i++) {
+        heightToProcessedBlocks.merge(i, 1, Integer::sum);
+        if (isActiveRangeUpdateRequired(i)) {
+          activeRangeUpdateRequired = true;
+        }
+        if (i + 1 > getActiveRange().getMaxHeight()) {
+          break;
+        }
       }
-      if (i + 1 > getActiveRange().getMaxHeight()) {
-        break;
+      if (activeRangeUpdateRequired) {
+        updateActiveRange();
       }
     }
   }
@@ -54,7 +62,9 @@ public class RangeResponseProcessor {
   }
 
   private boolean isActiveRangeUpdateRequired(long blockHeight) {
-    return allResponseReceived(blockHeight) && heightToProcessedBlocks.get(blockHeight) == minRangeResponse;
+    return blockHeight == minUnfulfilledHeight.get() &&
+        allResponseReceived(blockHeight) &&
+        heightToProcessedBlocks.get(blockHeight) == minRangeResponse;
   }
 
   private boolean allResponseReceived(long blockHeight) {
