@@ -9,7 +9,6 @@ public class RangeResponseProcessor {
   private final int minRangeResponse;
   private final AtomicLong minUnfulfilledHeight;
   private final Map<Long, Integer> heightToProcessedBlocks;
-  private UpdateListener updateListener;
 
   public RangeResponseProcessor(long activeRangeSize, int minRangeResponse) {
     this.activeRangeSize = activeRangeSize;
@@ -25,18 +24,6 @@ public class RangeResponseProcessor {
     this.minRangeResponse = minRangeResponse;
     this.heightToProcessedBlocks = heightToProcessedBlocks;
     this.minUnfulfilledHeight = new AtomicLong(0);
-    updateActiveRange(10);
-  }
-
-  RangeResponseProcessor(long activeRangeSize,
-                         int minRangeResponse,
-                         Map<Long, Integer> heightToProcessedBlocks,
-                         UpdateListener updateListener) {
-    this.activeRangeSize = activeRangeSize;
-    this.minRangeResponse = minRangeResponse;
-    this.heightToProcessedBlocks = heightToProcessedBlocks;
-    this.minUnfulfilledHeight = new AtomicLong(0);
-    this.updateListener = updateListener;
     updateActiveRange(10);
   }
 
@@ -77,9 +64,6 @@ public class RangeResponseProcessor {
   }
 
   private void updateActiveRange(long maxHeight) {
-    if (updateListener != null) {
-      updateListener.consumeUpdate(heightToProcessedBlocks);
-    }
     long i = minUnfulfilledHeight.get();
     while (i <= maxHeight && heightToProcessedBlocks.containsKey(i) && heightToProcessedBlocks.get(i) >= minRangeResponse) {
       i++;

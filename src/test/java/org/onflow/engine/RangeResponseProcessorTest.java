@@ -154,13 +154,12 @@ class RangeResponseProcessorTest {
   void processRangeCanProcessBlocksInThreadSafeManner() throws ExecutionException, InterruptedException {
     Block[] blocks = generateBlockArrayOfSize(1);
     int threads = 1000;
+    int minRangeResponse = 100;
     ExecutorService service = Executors.newFixedThreadPool(threads);
     CountDownLatch latch = new CountDownLatch(1);
     Collection<Future<?>> futures = new ArrayList<>(threads);
     Map<Long, Integer> heightToProcessedBlocks = new HashMap<>();
-    RangeResponseProcessor processor =
-        new RangeResponseProcessor(1L, 20, heightToProcessedBlocks,
-            new UpdateListener(0, 20));
+    RangeResponseProcessor processor = new RangeResponseProcessor(1L, minRangeResponse, heightToProcessedBlocks);
 
     for (int i = 0; i < threads; i++) {
       futures.add(
@@ -178,7 +177,7 @@ class RangeResponseProcessorTest {
     for (Future<?> f : futures) {
       f.get();
     }
-    assertEquals(heightToProcessedBlocks.get(0L), threads);
+    assertEquals(minRangeResponse, heightToProcessedBlocks.get(0L));
   }
 
   private Block[] generateBlockArrayOfSize(int size) {
