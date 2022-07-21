@@ -25,6 +25,7 @@ public class RangeResponseProcessor {
     this.minRangeResponse = minRangeResponse;
     this.heightToProcessedBlocks = heightToProcessedBlocks;
     this.minUnfulfilledHeight = new AtomicLong(0);
+    updateActiveRange();
   }
 
   RangeResponseProcessor(long activeRangeSize,
@@ -36,18 +37,18 @@ public class RangeResponseProcessor {
     this.heightToProcessedBlocks = heightToProcessedBlocks;
     this.minUnfulfilledHeight = new AtomicLong(0);
     this.updateListener = updateListener;
+    updateActiveRange();
   }
 
   public synchronized void processRange(long startHeight, Block[] blocks) {
     if (blocks != null) {
+      ActiveRange activeRange = getActiveRange();
+      startHeight = Math.max(startHeight, activeRange.getMinHeight());
       boolean activeRangeUpdateRequired = false;
-      for (long i = startHeight; i < blocks.length + startHeight; i++) {
+      for (long i = startHeight; (i < blocks.length + startHeight && i <= activeRange.getMaxHeight()); i++) {
         heightToProcessedBlocks.merge(i, 1, Integer::sum);
         if (isActiveRangeUpdateRequired(i)) {
           activeRangeUpdateRequired = true;
-        }
-        if (i + 1 > getActiveRange().getMaxHeight()) {
-          break;
         }
       }
       if (activeRangeUpdateRequired) {
@@ -79,8 +80,9 @@ public class RangeResponseProcessor {
     if (updateListener != null) {
       updateListener.consumeUpdate(heightToProcessedBlocks);
     }
-    long i = minUnfulfilledHeight.incrementAndGet();
-    while (i < heightToProcessedBlocks.size() && heightToProcessedBlocks.get(i) >= minRangeResponse) {
+    long i = minUnfulfilledHeight.get();
+    while (i < heightToProcessedBlocks.size() &&
+        (!heightToProcessedBlocks.containsKey(i) || heightToProcessedBlocks.get(i) >= minRangeResponse)) {
       minUnfulfilledHeight.getAndIncrement();
       i++;
     }
