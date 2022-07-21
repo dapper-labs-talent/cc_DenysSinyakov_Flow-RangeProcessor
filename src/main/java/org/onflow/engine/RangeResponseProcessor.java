@@ -1,14 +1,15 @@
 package org.onflow.engine;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class RangeResponseProcessor {
   private final long activeRangeSize;
   private final int minRangeResponse;
   private final AtomicLong minUnfulfilledHeight;
-  private final ConcurrentMap<Long, Integer> heightToProcessedBlocks;
+  private final Map<Long, Integer> heightToProcessedBlocks;
+  private UpdateListener updateListener;
 
   public RangeResponseProcessor(long activeRangeSize, int minRangeResponse) {
     this.activeRangeSize = activeRangeSize;
@@ -16,15 +17,26 @@ public class RangeResponseProcessor {
     this.heightToProcessedBlocks = new ConcurrentHashMap<>();
     minUnfulfilledHeight = new AtomicLong(0);
   }
-
-  RangeResponseProcessor(long activeRangeSize, int minRangeResponse, ConcurrentMap<Long, Integer> heightToProcessedBlocks) {
+  RangeResponseProcessor(long activeRangeSize,
+                         int minRangeResponse,
+                         Map<Long, Integer> heightToProcessedBlocks) {
     this.activeRangeSize = activeRangeSize;
     this.minRangeResponse = minRangeResponse;
     this.heightToProcessedBlocks = heightToProcessedBlocks;
-    minUnfulfilledHeight = new AtomicLong(0);
+    this.minUnfulfilledHeight = new AtomicLong(0);
+  }
+  RangeResponseProcessor(long activeRangeSize,
+                         int minRangeResponse,
+                         Map<Long, Integer> heightToProcessedBlocks,
+                         UpdateListener updateListener) {
+    this.activeRangeSize = activeRangeSize;
+    this.minRangeResponse = minRangeResponse;
+    this.heightToProcessedBlocks = heightToProcessedBlocks;
+    this.minUnfulfilledHeight = new AtomicLong(0);
+    this.updateListener = updateListener;
   }
 
-  public void processRange(long startHeight, Block[] blocks) {
+  public synchronized void processRange(long startHeight, Block[] blocks) {
     for (long i = startHeight; i < blocks.length + startHeight; i++) {
       heightToProcessedBlocks.merge(i, 1, Integer::sum);
       if (isActiveRangeUpdateRequired(i)) {
@@ -54,8 +66,11 @@ public class RangeResponseProcessor {
   }
 
   private void updateActiveRange() {
+    if (updateListener != null) {
+      updateListener.consumeUpdate(heightToProcessedBlocks);
+    }
     long i = minUnfulfilledHeight.incrementAndGet();
-    while (heightToProcessedBlocks.get(i) >= minRangeResponse && i < heightToProcessedBlocks.size()) {
+    while (i < heightToProcessedBlocks.size() && heightToProcessedBlocks.get(i) >= minRangeResponse) {
       minUnfulfilledHeight.getAndIncrement();
       i++;
     }

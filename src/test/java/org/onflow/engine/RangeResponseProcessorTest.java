@@ -2,11 +2,17 @@ package org.onflow.engine;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -97,7 +103,7 @@ class RangeResponseProcessorTest {
   void activeRangeIsReturnedWithMinHeightThatHasLesThanMinResponses() {
     int minRangeResponse = 10;
     long activeRangeSize = 5L;
-    ConcurrentMap<Long, Integer> heightToProcessedBlocks = new ConcurrentHashMap<>(){{
+    ConcurrentMap<Long, Integer> heightToProcessedBlocks = new ConcurrentHashMap<>() {{
       put(0L, 9); // gets updated and fulfilled
       put(1L, 10);
       put(2L, 7); // min height that is < than
@@ -111,6 +117,37 @@ class RangeResponseProcessorTest {
     processor.processRange(0, new Block[]{new Block("first")});
     ActiveRange expected = new ActiveRange(2L, 2L + activeRangeSize - 1);
     assertEquals(expected, processor.getActiveRange());
+  }
+
+  @Test
+  void processRangeCanProcessBlocksInThreadSafeManner() throws ExecutionException, InterruptedException {
+    Block[] blocks = new Block[]{
+        new Block("first"),
+    };
+    int threads = 1000;
+    ExecutorService service = Executors.newFixedThreadPool(threads);
+    CountDownLatch latch = new CountDownLatch(1);
+    Collection<Future<?>> futures = new ArrayList<>(threads);
+    Map<Long, Integer> heightToProcessedBlocks = new HashMap<>();
+    RangeResponseProcessor processor = new RangeResponseProcessor(1L, 20, heightToProcessedBlocks, new UpdateListener(0, 20));
+
+    for (int i = 0; i < threads; i++) {
+      futures.add(
+          service.submit(() -> {
+            try {
+              latch.await();
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+            processor.processRange(0, blocks);
+          })
+      );
+    }
+    latch.countDown();
+    for (Future<?> f : futures) {
+        f.get();
+    }
+    assertEquals(heightToProcessedBlocks.get(0L), threads);
   }
 
 }
