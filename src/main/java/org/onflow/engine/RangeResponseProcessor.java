@@ -17,16 +17,6 @@ public class RangeResponseProcessor {
     minUnfulfilledHeight = new AtomicLong(0);
   }
 
-  RangeResponseProcessor(long activeRangeSize,
-                         int minRangeResponse,
-                         Map<Long, Integer> heightToProcessedBlocks) {
-    this.activeRangeSize = activeRangeSize;
-    this.minRangeResponse = minRangeResponse;
-    this.heightToProcessedBlocks = heightToProcessedBlocks;
-    this.minUnfulfilledHeight = new AtomicLong(0);
-    updateActiveRange(10);
-  }
-
   public synchronized void processRange(long startHeight, Block[] blocks) {
     if (blocks != null) {
       ActiveRange activeRange = getActiveRange();
@@ -47,6 +37,10 @@ public class RangeResponseProcessor {
   public ActiveRange getActiveRange() {
     long h = minUnfulfilledHeight.get();
     return new ActiveRange(h, h + activeRangeSize - 1);
+  }
+
+  Map<Long, Integer> getBlockStats() {
+    return heightToProcessedBlocks;
   }
 
   private boolean isActiveRangeUpdateRequired(long blockHeight) {
