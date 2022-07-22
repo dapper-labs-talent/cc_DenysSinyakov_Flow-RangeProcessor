@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -26,6 +27,31 @@ class RangeResponseProcessorTest {
   void rangeProcessorCanBeCreated() {
     RangeResponseProcessor responseProcessor = new RangeResponseProcessor(ACTIVE_RANGE_SIZE, MIN_RANGE_RESPONSE);
     assertNotNull(responseProcessor);
+  }
+
+  @Test
+  void doesNotProcessNegativeBlockHeight() {
+    Block[] blocks = generateBlockArrayOfSize(3);
+    long startHeight = -100;
+    RangeResponseProcessor processor = new RangeResponseProcessor(ACTIVE_RANGE_SIZE, MIN_RANGE_RESPONSE);
+    processor.processRange(startHeight, blocks);
+    assertEquals(Collections.emptyMap(), processor.getBlockStats());
+  }
+
+  @Test
+  void doesNotProcessNullBlockArray() {
+    long startHeight = 0;
+    RangeResponseProcessor processor = new RangeResponseProcessor(ACTIVE_RANGE_SIZE, MIN_RANGE_RESPONSE);
+    processor.processRange(startHeight, null);
+    assertEquals(Collections.emptyMap(), processor.getBlockStats());
+  }
+
+  @Test
+  void doesNotProcessEmptyBlockArray() {
+    long startHeight = 0;
+    RangeResponseProcessor processor = new RangeResponseProcessor(ACTIVE_RANGE_SIZE, MIN_RANGE_RESPONSE);
+    processor.processRange(startHeight, new Block[]{});
+    assertEquals(Collections.emptyMap(), processor.getBlockStats());
   }
 
   @Test

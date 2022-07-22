@@ -2,6 +2,9 @@ package org.onflow.engine;
 
 import java.util.Objects;
 
+/**
+ * Represents active range values: min height and max height.
+ */
 public class ActiveRange {
   private final long minHeight;
   private final long maxHeight;
