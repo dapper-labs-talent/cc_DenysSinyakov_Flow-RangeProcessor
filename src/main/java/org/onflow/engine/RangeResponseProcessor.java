@@ -20,9 +20,11 @@ public class RangeResponseProcessor {
   public synchronized void processRange(long startHeight, Block[] blocks) {
     if (blocks != null) {
       ActiveRange activeRange = getActiveRange();
+      System.out.println(activeRange);
       startHeight = Math.max(startHeight, activeRange.getMinHeight());
       boolean activeRangeUpdateRequired = false;
       for (long i = startHeight; (i < blocks.length + startHeight && i <= activeRange.getMaxHeight()); i++) {
+        System.out.println(i);
         heightToProcessedBlocks.merge(i, 1, Integer::sum);
         if (isActiveRangeUpdateRequired(i)) {
           activeRangeUpdateRequired = true;
@@ -31,6 +33,7 @@ public class RangeResponseProcessor {
       if (activeRangeUpdateRequired) {
         updateActiveRange(Math.min(activeRange.getMaxHeight(), startHeight + blocks.length));
       }
+      System.out.println(heightToProcessedBlocks);
     }
   }
 

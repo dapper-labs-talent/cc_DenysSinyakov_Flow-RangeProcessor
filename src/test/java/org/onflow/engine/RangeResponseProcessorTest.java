@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
@@ -46,17 +48,16 @@ class RangeResponseProcessorTest {
   @Test
   void processRangeCanProcessConsecutiveRangeOfBlocks() {
     Block[] blocks = generateBlockArrayOfSize(3);
-    RangeResponseProcessor processor =
-        new RangeResponseProcessor(ACTIVE_RANGE_SIZE, MIN_RANGE_RESPONSE);
+    RangeResponseProcessor processor = new RangeResponseProcessor(ACTIVE_RANGE_SIZE, MIN_RANGE_RESPONSE);
     processor.processRange(0, blocks);
     processor.processRange(1, blocks);
     processor.processRange(1, blocks);
-    Map<Long, Integer> expectedResult = new HashMap<>() {{
-      put(0L, 1);
-      put(1L, 3);
-      put(2L, 3);
-      put(3L, 2);
-    }};
+    Map<Long, Integer> expectedResult = Map.of(
+        0L, 1,
+        1L, 3,
+        2L, 3,
+        3L, 2
+    );
     assertEquals(expectedResult, processor.getBlockStats());
   }
 
@@ -67,28 +68,27 @@ class RangeResponseProcessorTest {
     Block[] blocks = generateBlockArrayOfSize(5); // blocks of index 3 and 4 to be ignored with active range size 3
 
     processor.processRange(0L, blocks);
-    Map<Long, Integer> expectedResult = new HashMap<>() {{
-      put(0L, 1);
-      put(1L, 1);
-      put(2L, 1);
-    }};
+    Map<Long, Integer> expectedResult = Map.of(
+        0L, 1,
+        1L, 1,
+        2L, 1
+    );
     assertEquals(expectedResult, processor.getBlockStats());
   }
 
   @Test
   void blocksNotWithinActiveRangeAreIgnored() {
-    Map<Long, Integer> processedBlocksBeforeTheTest = Map.of(
-        0L, 10,
-        1L, 10,
-        2L, 1,
-        3L, 1
-    );
+    SortedMap<Long, Integer> processedBlocksBeforeTheTest = new TreeMap<>() {{
+      put(0L, 10);
+      put(1L, 10);
+      put(2L, 1);
+      put(3L, 1);
+    }};
 
     long activeRangeSize = 3L;
     RangeResponseProcessor processor = new RangeResponseProcessor(activeRangeSize, MIN_RANGE_RESPONSE);
     initProcessor(processedBlocksBeforeTheTest, processor);
     Block[] blocks = generateBlockArrayOfSize(10);
-
     processor.processRange(0L, blocks);
     Map<Long, Integer> expectedResult = Map.of(
         0L, 10, // should remain the same
@@ -101,14 +101,6 @@ class RangeResponseProcessorTest {
     assertEquals(expectedResult, processor.getBlockStats());
   }
 
-  private void initProcessor(Map<Long, Integer> heightToProcessedBlocks, RangeResponseProcessor processor) {
-    heightToProcessedBlocks.forEach((height, responses) -> {
-      for (int i = 0; i < responses; i++) {
-        processor.processRange(height, new Block[]{new Block(String.valueOf(height))});
-      }
-    });
-  }
-
   @Test
   void initialActiveRangeIsZeroToActiveRangeSizeMinusOne() {
     RangeResponseProcessor processor = new RangeResponseProcessor(ACTIVE_RANGE_SIZE, MIN_RANGE_RESPONSE);
@@ -119,15 +111,15 @@ class RangeResponseProcessorTest {
   @Test
   void activeRangeIsReturnedWithMinHeightThatHasLessThanMinResponses() {
     long activeRangeSize = 5L;
-    Map<Long, Integer> blocksBeforeTest = Map.of(
-        0L, 9, // gets updated and fulfilled
-        1L, 10,
-        2L, 7, // min height that is < than min responses for range
-        5L, 8,
-        6L, 10,
-        7L, 10,
-        10L, 10
-    );
+    SortedMap<Long, Integer> blocksBeforeTest = new TreeMap<>() {{
+      put(0L, 9); // gets updated and fulfilled
+      put(1L, 10);
+      put(2L, 7); // min height that is < than min responses for range
+      put(5L, 8);
+      put(6L, 10);
+      put(7L, 10);
+      put(10L, 10);
+    }};
     RangeResponseProcessor processor = new RangeResponseProcessor(activeRangeSize, MIN_RANGE_RESPONSE);
     initProcessor(blocksBeforeTest, processor);
 
@@ -139,11 +131,11 @@ class RangeResponseProcessorTest {
   @Test
   void activeRangeIsReturnedWithMinHeightThatHasNoMinResponses() {
     long activeRangeSize = 5L;
-    Map<Long, Integer> blockBeforeTest = Map.of(
-        0L, 9, // gets updated and fulfilled
-        1L, 10,
-        5L, 0
-    );
+    SortedMap<Long, Integer> blockBeforeTest = new TreeMap<>() {{
+      put(0L, 9); // gets updated and fulfilled
+      put(1L, 10);
+      put(5L, 0);
+    }};
 
     RangeResponseProcessor processor = new RangeResponseProcessor(activeRangeSize, MIN_RANGE_RESPONSE);
     initProcessor(blockBeforeTest, processor);
@@ -179,6 +171,14 @@ class RangeResponseProcessorTest {
       f.get();
     }
     assertEquals(minRangeResponse, processor.getBlockStats().get(0L));
+  }
+
+  private void initProcessor(Map<Long, Integer> heightToProcessedBlocks, RangeResponseProcessor processor) {
+    heightToProcessedBlocks.forEach((height, responses) -> {
+      for (int i = 0; i < responses; i++) {
+        processor.processRange(height, new Block[]{new Block(String.valueOf(height))});
+      }
+    });
   }
 
   private Block[] generateBlockArrayOfSize(int size) {
