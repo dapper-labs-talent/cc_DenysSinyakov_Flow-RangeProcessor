@@ -84,10 +84,7 @@ public class RangeResponseProcessor {
   }
 
   private boolean allResponseReceived(long blockHeight) {
-    Integer responsesNumber = heightToProcessedBlocks.get(blockHeight);
-    if (responsesNumber == null) {
-      return false;
-    }
+    int responsesNumber = heightToProcessedBlocks.get(blockHeight);
     return responsesNumber == minRangeResponse;
   }
 
